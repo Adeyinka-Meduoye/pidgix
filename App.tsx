@@ -4,7 +4,7 @@ import { Translator } from './components/Translator';
 import { HistoryList } from './components/HistoryList';
 import { TranslationResult, ToneType } from './types';
 
-const HISTORY_KEY = 'pidgix-history'; // Changed key to reset/start fresh for rebrand
+const HISTORY_KEY = 'pidgix-history';
 const TONE_KEY = 'pidgix-tone';
 
 const App: React.FC = () => {
@@ -43,7 +43,7 @@ const App: React.FC = () => {
   const handleClearHistory = () => {
     if (window.confirm("You wan clear everything?")) {
       setHistory([]);
-      localStorage.removeItem(HISTORY_KEY); // Explicitly remove for robustness
+      localStorage.removeItem(HISTORY_KEY);
     }
   };
 
@@ -52,23 +52,23 @@ const App: React.FC = () => {
     // Simple toast-like alert
     const el = document.createElement('div');
     el.innerText = `Copied: "${item.translated.substring(0, 30)}..."`;
-    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-naija-green text-white px-4 py-2 rounded-full shadow-lg z-50 text-sm animate-bounce';
+    el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-naija-green text-white px-4 py-2 rounded-full shadow-lg z-50 text-sm font-medium animate-bounce';
     document.body.appendChild(el);
     setTimeout(() => document.body.removeChild(el), 2000);
   };
 
   return (
-    <div className="min-h-screen bg-naija-darker flex flex-col font-sans text-gray-100">
+    <div className="min-h-screen bg-naija-darker flex flex-col font-sans text-gray-100 selection:bg-naija-green selection:text-white">
       <Header />
       
       <main className="flex-grow container mx-auto px-4 py-8 sm:py-12 max-w-4xl">
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div className="text-center mb-8">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
-              English <span className="text-gray-600">↔</span> <span className="text-naija-green">Pidgin</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 tracking-tight">
+              English <span className="text-gray-500">↔</span> <span className="text-transparent bg-clip-text bg-gradient-to-r from-naija-green to-green-400">Pidgin</span>
             </h2>
             <p className="text-gray-400 text-lg max-w-xl mx-auto">
-              Translate your grammar to street credibility instantly. Whether you need am for <span className="font-semibold text-gray-200">Street</span> or <span className="font-semibold text-gray-200">Office</span>, Pidgix dey for you.
+              Translate your grammar to street credibility instantly. Whether you need am for <span className="text-naija-green font-medium">Street</span> or <span className="text-blue-400 font-medium">Office</span>, Pidgix dey for you.
             </p>
           </div>
 
@@ -86,13 +86,13 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <footer className="bg-naija-surface border-t border-gray-800 py-8 mt-12">
+      <footer className="bg-naija-darker border-t border-gray-800 py-8 mt-12">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-gray-400 text-sm">Made with ❤️ and plenty 🌶️ pepper.</p>
-          <p className="mt-2 text-xs text-gray-500">AI translations may vary. Always double check before you use am for serious matter.</p>
-          <div className="mt-6 pt-6 border-t border-gray-800 flex flex-col items-center">
-             <span className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Developed by</span>
-             <span className="text-sm font-bold text-naija-green mt-1">MEDUS TECHNOLOGIES</span>
+          <p className="text-gray-400 text-sm">Made with ❤️ and plenty <span className="text-red-500">🌶️</span> pepper.</p>
+          <p className="mt-2 text-xs text-gray-600">AI translations may vary. Always double check before you use am for serious matter.</p>
+          <div className="mt-6 pt-6 border-t border-gray-800/50 flex flex-col items-center">
+             <span className="text-[10px] font-bold tracking-[0.2em] text-gray-500 uppercase">Developed by</span>
+             <span className="text-sm font-bold text-naija-green mt-1 tracking-wide">MEDUS TECHNOLOGIES</span>
           </div>
         </div>
       </footer>
