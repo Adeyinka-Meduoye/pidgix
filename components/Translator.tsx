@@ -120,7 +120,8 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
         const spacer = textBeforeSpeech && !/\s$/.test(textBeforeSpeech) ? ' ' : '';
         
         // Update input with the base text + the full current session transcript
-        setInputText(textBeforeSpeech + spacer + transcript);
+        const newText = textBeforeSpeech + spacer + transcript;
+        setInputText(newText);
       };
 
       recognition.start();
@@ -182,6 +183,10 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+  };
+
   return (
     <div className="bg-naija-surface rounded-2xl shadow-xl overflow-hidden border border-gray-800">
       {/* Controls Header */}
@@ -234,15 +239,16 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
         <div className="relative">
           <textarea
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder={
               direction === 'english-to-pidgin' 
                 ? "Enter English text here e.g., 'I will be there in ten minutes'..." 
                 : "Enter Pidgin text here e.g., 'Abeg, I wan go chop'..."
             }
-            className="w-full h-32 p-4 text-gray-100 placeholder-gray-500 bg-gray-900/50 border-2 border-gray-700 focus:border-naija-green rounded-xl resize-none outline-none transition-all text-lg"
+            className="w-full h-32 p-4 pb-8 text-gray-100 placeholder-gray-500 bg-gray-900/50 border-2 border-gray-700 focus:border-naija-green rounded-xl resize-none outline-none transition-all text-lg custom-scrollbar"
           />
+          
           {/* Voice Input Button */}
           <button 
             onClick={toggleListening}
