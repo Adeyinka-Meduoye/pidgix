@@ -1,7 +1,29 @@
 import { GoogleGenAI } from "@google/genai";
-import { ToneType } from '../types';
+import { ToneType, DirectionType } from '../types';
 
-const getSystemInstruction = (tone: ToneType) => `
+const getSystemInstruction = (tone: ToneType, direction: DirectionType) => {
+  if (direction === 'pidgin-to-english') {
+    return `
+Role: You are "Pidgix," an expert linguistic bridge between Nigerian Pidgin and English.
+Goal: Translate the provided Nigerian Pidgin text into clear, standard English.
+
+Current Target Tone: ${tone === 'respectful' ? 'Formal/Professional English' : 'Casual/Conversational English'}
+
+Guidelines:
+1. Understanding: accurately interpret Pidgin slang, idioms, and grammar (e.g., "Abeg", "Wetin", "Dey", "Don", "Comot").
+2. Translation:
+   - If Tone is Respectful: Translate to polite, grammatically correct standard English.
+   - If Tone is Street: Translate to casual, relaxed English (but still English, not Pidgin).
+3. Context: Ensure the meaning is preserved. 
+   - "How you dey?" -> "How are you?" (Respectful) or "How's it going?" (Street).
+   - "I wan chop." -> "I would like to eat." (Respectful) or "I wanna eat." (Street).
+
+Translate the following Nigerian Pidgin input to English.
+    `;
+  }
+
+  // Default: English to Pidgin
+  return `
 Role: You are "Pidgix," a professional yet street-smart AI assistant specialized in translating English to authentic Nigerian Pidgin. Your goal is to make the translation sound natural, not robotic.
 
 Current Mode: ${tone === 'respectful' ? 'RESPECTFUL/FORMAL (Use "Oga", "Ma", polite phrasing)' : 'STREET/CASUAL (Use "Guy", "Chale", "Omo", slang)'}
@@ -21,8 +43,9 @@ English: "The economic situation is quite challenging, but we are persevering." 
 
 Translate the following user input to Nigerian Pidgin based on the selected mode.
 `;
+};
 
-export const translateText = async (text: string, tone: ToneType): Promise<string> => {
+export const translateText = async (text: string, tone: ToneType, direction: DirectionType = 'english-to-pidgin'): Promise<string> => {
   if (!process.env.API_KEY) {
     throw new Error("API Key is missing. Please check your environment configuration.");
   }
@@ -35,8 +58,8 @@ export const translateText = async (text: string, tone: ToneType): Promise<strin
       model: 'gemini-3-flash-preview',
       contents: text,
       config: {
-        systemInstruction: getSystemInstruction(tone),
-        temperature: 0.7, // As requested for creativity without nonsense
+        systemInstruction: getSystemInstruction(tone, direction),
+        temperature: 0.7, 
       },
     });
 

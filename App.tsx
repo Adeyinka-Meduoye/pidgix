@@ -65,7 +65,7 @@ const App: React.FC = () => {
         <div className="space-y-6">
           <div className="text-center mb-8">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">
-              English <span className="text-gray-600">→</span> <span className="text-naija-green">Pidgin</span>
+              English <span className="text-gray-600">↔</span> <span className="text-naija-green">Pidgin</span>
             </h2>
             <p className="text-gray-400 text-lg max-w-xl mx-auto">
               Translate your grammar to street credibility instantly. Whether you need am for <span className="font-semibold text-gray-200">Street</span> or <span className="font-semibold text-gray-200">Office</span>, Pidgix dey for you.
