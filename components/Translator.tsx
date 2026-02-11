@@ -21,8 +21,11 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      
+      // Use continuous to allow natural pausing and multiple sentences
+      recognition.continuous = true;
+      // Enable interim results to see text as you speak
+      recognition.interimResults = true;
       recognition.lang = 'en-US';
 
       recognition.onstart = () => setIsListening(true);
@@ -36,9 +39,21 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
         }
       };
 
+      // Capture the text that existed before this specific speech session started
+      const textBeforeSpeech = inputText;
+
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputText((prev) => (prev ? prev + ' ' : '') + transcript);
+        let transcript = '';
+        // Iterate through all results provided by the session
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+
+        // Add a space if the previous text didn't end with whitespace
+        const spacer = textBeforeSpeech && !/\s$/.test(textBeforeSpeech) ? ' ' : '';
+        
+        // Update input with the base text + the full current session transcript
+        setInputText(textBeforeSpeech + spacer + transcript);
       };
 
       recognition.start();
