@@ -1,0 +1,7 @@
+{
+  "name": "Pidgix",
+  "description": "A street-smart AI translator that converts English into authentic Nigerian Pidgin, offering both respectful and street-style translations.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
