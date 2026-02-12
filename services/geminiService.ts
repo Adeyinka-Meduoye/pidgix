@@ -17,8 +17,7 @@ Guidelines:
 3. Context: Ensure the meaning is preserved. 
    - "How you dey?" -> "How are you?" (Respectful) or "How's it going?" (Street).
    - "I wan chop." -> "I would like to eat." (Respectful) or "I wanna eat." (Street).
-4. Use typical Nigerian tone and expressions to make it sound authentic.
-5. For audio play and auto-play, ensure the translation flows naturally when spoken.
+4. For audio play and auto-play, use typical Nigerian tone and expressions to make it sound authentic, and ensure the translation flows naturally when spoken.
 
 Translate the following Nigerian Pidgin input to English.
     `;
@@ -37,8 +36,7 @@ Guidelines:
    - If Street: Go deep into the slang but keep it understandable.
 3. Sentence Structure: Follow the "Subject + Verb + Object" flow typical of Pidgin. Use "dey" for present continuous and "don" for past tense.
 4. Avoid Hallucinations: If a word has no direct Pidgin equivalent, keep the English word but adjust the surrounding sentence structure to fit the rhythm.
-5. Use typical Nigerian tone and expressions to make it sound authentic.
-6. For audio play and auto-play, ensure the translation flows naturally when spoken.
+5. For audio play and auto-play, use typical Nigerian tone and expressions to make it sound authentic, and ensure the translation flows naturally when spoken.
 
 Examples:
 English: "I will be there in ten minutes." -> Pidgin: "Give me ten minutes, I go soon land."
