@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { translateText } from '../services/geminiService';
+import { translateText, generateSpeech } from '../services/geminiService';
 import { ToneType, TranslationResult, DirectionType } from '../types';
 
 interface TranslatorProps {
@@ -8,20 +8,53 @@ interface TranslatorProps {
   onToneChange: (tone: ToneType) => void;
 }
 
+// Helper to decode Base64 to Uint8Array
+const decodeBase64 = (base64: string) => {
+  const binaryString = window.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+};
+
+// Helper to decode raw Int16 PCM to AudioBuffer
+async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      // Convert Int16 to Float32 [-1.0, 1.0]
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
 export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, onToneChange }) => {
   const [inputText, setInputText] = useState('');
   const [direction, setDirection] = useState<DirectionType>('english-to-pidgin');
   const [loading, setLoading] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   
-  // Ref to track the recognition instance to prevent overlaps
+  // Ref to track the recognition instance
   const recognitionRef = useRef<any>(null);
 
-  // Cleanup recognition on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
@@ -33,39 +66,63 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
     };
   }, []);
 
-  // Ensure voices are loaded
   useEffect(() => {
     if ('speechSynthesis' in window) {
        window.speechSynthesis.getVoices();
     }
   }, []);
 
-  const speakText = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
-    
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Target lang depends on direction. 
-    // english-to-pidgin => Output is Pidgin (use en-NG if avail)
-    // pidgin-to-english => Output is English (use en-US/GB)
-    const targetLang = direction === 'english-to-pidgin' ? 'en-NG' : 'en-US';
-    utterance.lang = targetLang;
-    
-    // Attempt to select a voice
-    const voices = window.speechSynthesis.getVoices();
-    // Prioritize exact match, then any english
-    const voice = voices.find(v => v.lang === targetLang) || voices.find(v => v.lang.startsWith('en'));
-    if (voice) {
-        utterance.voice = voice;
+  const speakText = async (text: string, targetDirection: DirectionType) => {
+    // If output is English (from Pidgin), use Browser TTS (User is happy with this)
+    if (targetDirection === 'pidgin-to-english') {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US'; // Standard English
+      // Attempt to select a voice
+      const voices = window.speechSynthesis.getVoices();
+      const voice = voices.find(v => v.lang === 'en-US') || voices.find(v => v.lang.startsWith('en'));
+      if (voice) utterance.voice = voice;
+      window.speechSynthesis.speak(utterance);
+      return;
     }
-    
-    window.speechSynthesis.speak(utterance);
+
+    // If output is Pidgin (from English), use Gemini TTS for Naija accent
+    if (targetDirection === 'english-to-pidgin') {
+      try {
+        setAudioLoading(true);
+        // Stop any current browser speech
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+        const pcmBase64 = await generateSpeech(text);
+        
+        // Play PCM Audio
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const audioContext = new AudioContextClass({ sampleRate: 24000 });
+        const pcmBytes = decodeBase64(pcmBase64);
+        const audioBuffer = await decodeAudioData(pcmBytes, audioContext, 24000, 1);
+        
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+
+      } catch (err) {
+        console.error("Gemini TTS Error:", err);
+        // Fallback to browser TTS if API fails
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'en-NG'; // Try en-NG if available
+          window.speechSynthesis.speak(utterance);
+        }
+      } finally {
+        setAudioLoading(false);
+      }
+    }
   };
 
   // Voice Input Logic
   const toggleListening = () => {
-    // If already listening, stop the current session
     if (isListening) {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
@@ -79,11 +136,8 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
-      
-      // Use continuous to allow natural pausing and multiple sentences
       recognition.continuous = true;
       recognition.interimResults = true;
-      // Use Nigerian English for Pidgin input (closest match), US English for default
       recognition.lang = direction === 'pidgin-to-english' ? 'en-NG' : 'en-US';
 
       recognition.onstart = () => {
@@ -105,23 +159,15 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
         }
       };
 
-      // Capture the text that existed before this specific speech session started
-      // This is crucial to prevent the 'Are Are you' duplication bug
       const textBeforeSpeech = inputText;
 
       recognition.onresult = (event: any) => {
         let transcript = '';
-        // Iterate through all results provided by the session
         for (let i = 0; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
         }
-
-        // Add a space if the previous text didn't end with whitespace and isn't empty
         const spacer = textBeforeSpeech && !/\s$/.test(textBeforeSpeech) ? ' ' : '';
-        
-        // Update input with the base text + the full current session transcript
-        const newText = textBeforeSpeech + spacer + transcript;
-        setInputText(newText);
+        setInputText(textBeforeSpeech + spacer + transcript);
       };
 
       recognition.start();
@@ -143,7 +189,8 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
       setResult(translatedText);
       
       if (autoPlay) {
-        speakText(translatedText);
+        // Fire and forget speech to not block UI
+        speakText(translatedText, direction);
       }
 
       onNewTranslation({
@@ -163,7 +210,6 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
 
   const toggleDirection = () => {
     setDirection(prev => prev === 'english-to-pidgin' ? 'pidgin-to-english' : 'english-to-pidgin');
-    // Clear input to avoid language confusion
     setInputText('');
     setResult(null);
     setError(null);
@@ -339,11 +385,19 @@ export const Translator: React.FC<TranslatorProps> = ({ onNewTranslation, tone, 
             <div className="flex items-center gap-2">
                 {result && (
                   <button
-                    onClick={() => speakText(result)}
-                    className="text-gray-400 hover:text-naija-green transition-colors p-2 rounded-full hover:bg-gray-800"
+                    onClick={() => speakText(result, direction)}
+                    disabled={audioLoading}
+                    className="text-gray-400 hover:text-naija-green transition-colors p-2 rounded-full hover:bg-gray-800 disabled:opacity-50"
                     title="Speak text"
                   >
-                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                     {audioLoading ? (
+                       <svg className="animate-spin w-5 h-5 text-naija-green" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                       </svg>
+                     ) : (
+                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                     )}
                   </button>
                 )}
                 {result && (
